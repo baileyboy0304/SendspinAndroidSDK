@@ -1,0 +1,8 @@
+/.idea/
+/.gradle/
+/build/
+/demo-debug/build/
+/demo-simple/build/
+/demo-headless/build/
+/local.properties
+/sdk/build/
