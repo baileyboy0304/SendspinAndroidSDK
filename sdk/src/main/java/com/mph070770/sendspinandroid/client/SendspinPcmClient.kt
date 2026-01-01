@@ -50,12 +50,16 @@ internal class SendspinPcmClient(
 
     private var playAtServerUs: Long = Long.MIN_VALUE
 
-    // Pipeline delay offset (Âµs). Compensates for Android audio pipeline latency.
+    // Pipeline delay offset (Ã‚Âµs). Compensates for Android audio pipeline latency.
     @Volatile private var playoutOffsetUs: Long = -120_000L  // Default -120ms
 
     // Track last sent error state to prevent spam
     private var lastErrorStateSent: Long = 0L
     private val errorStateThrottleMs = 1000L  // Only send error state once per second
+
+    // Throttle UI updates to prevent excessive recomposition (max 5 updates/sec)
+    private var lastUiUpdateMs: Long = 0L
+    private val uiUpdateThrottleMs = 200L  // 200ms = 5 updates per second
 
     fun setPlayoutOffsetMs(ms: Long) {
         val clamped = ms.coerceIn(-1000L, 1000L)
@@ -341,18 +345,23 @@ internal class SendspinPcmClient(
                 val offUs = clock.estimatedOffsetUs()
                 val snapshot = jitter.snapshot(offUs)
 
-                onUiUpdate {
-                    it.copy(
-                        queuedChunks = snapshot.queuedChunks,
-                        bufferAheadMs = snapshot.bufferAheadMs,
-                        lateDrops = snapshot.lateDrops,
-                        offsetUs = offUs,
-                        driftPpm = clock.estimatedDriftPpm(),
-                        rttUs = clock.estimatedRttUs(),
-                        isClockConverged = clock.hasConverged(),
-                        clockMeasurements = clock.getMeasurementCount(),
-                        clockErrorUs = clock.estimatedErrorUs()
-                    )
+                // Throttle UI updates to max 5 per second (200ms intervals)
+                val nowMs = System.currentTimeMillis()
+                if (nowMs - lastUiUpdateMs >= uiUpdateThrottleMs) {
+                    lastUiUpdateMs = nowMs
+                    onUiUpdate {
+                        it.copy(
+                            queuedChunks = snapshot.queuedChunks,
+                            bufferAheadMs = snapshot.bufferAheadMs,
+                            lateDrops = snapshot.lateDrops,
+                            offsetUs = offUs,
+                            driftPpm = clock.estimatedDriftPpm(),
+                            rttUs = clock.estimatedRttUs(),
+                            isClockConverged = clock.hasConverged(),
+                            clockMeasurements = clock.getMeasurementCount(),
+                            clockErrorUs = clock.estimatedErrorUs()
+                        )
+                    }
                 }
 
                 if (!output.isStarted()) {
@@ -537,16 +546,23 @@ internal class SendspinPcmClient(
                     val clientRx = nowUs()
                     clock.onServerTime(clientTx, clientRx, sRecv, sTx)
 
-                    // UPDATE: Push convergence progress to UI every time we get a server/time response
-                    onUiUpdate {
-                        it.copy(
-                            offsetUs = clock.estimatedOffsetUs(),
-                            driftPpm = clock.estimatedDriftPpm(),
-                            rttUs = clock.estimatedRttUs(),
-                            isClockConverged = clock.hasConverged(),
-                            clockMeasurements = clock.getMeasurementCount(),
-                            clockErrorUs = clock.estimatedErrorUs()
-                        )
+                    // Update UI immediately during convergence, then throttle once converged
+                    // This ensures the user sees sync progress without excessive updates
+                    val nowMs = System.currentTimeMillis()
+                    val shouldUpdate = !clock.hasConverged() || (nowMs - lastUiUpdateMs >= uiUpdateThrottleMs)
+
+                    if (shouldUpdate) {
+                        lastUiUpdateMs = nowMs
+                        onUiUpdate {
+                            it.copy(
+                                offsetUs = clock.estimatedOffsetUs(),
+                                driftPpm = clock.estimatedDriftPpm(),
+                                rttUs = clock.estimatedRttUs(),
+                                isClockConverged = clock.hasConverged(),
+                                clockMeasurements = clock.getMeasurementCount(),
+                                clockErrorUs = clock.estimatedErrorUs()
+                            )
+                        }
                     }
                 }
 
