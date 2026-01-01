@@ -6,6 +6,8 @@ Android SDK for synchronized multi-room audio streaming using the Sendspin proto
 
 This project contains **4 build variants** to support different use cases:
 
+<img src="simple.png" alt="UI Screenshot" width="40%">
+
 ### 1. 📱 **demo-simple** (Simple Player App)
 **Clean, minimal UI**
 
@@ -25,6 +27,8 @@ This project contains **4 build variants** to support different use cases:
 ```
 
 ---
+
+<img src="debug.png" alt="UI Screenshot" width="40%">
 
 ### 2. 🔧 **demo-debug** (Debug Player App)
 **Full-featured debug UI with all controls**
