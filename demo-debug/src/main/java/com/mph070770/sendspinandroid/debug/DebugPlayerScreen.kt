@@ -881,11 +881,14 @@ fun DebugPlayerScreen(
         }
 
         // Playout offset control
-        val playoutOffset = client.getPlayoutOffset()
+        var playoutOffset by remember { mutableStateOf(client.getPlayoutOffset()) }
         Text("Playout offset: ${playoutOffset}ms (neg = earlier / catch up)")
         Slider(
             value = playoutOffset.toFloat(),
-            onValueChange = { client.setPlayoutOffset(it.toLong()) },
+            onValueChange = {
+                playoutOffset = it.toLong()
+                client.setPlayoutOffset(it.toLong())
+            },
             valueRange = -1000f..1000f,
             steps = 200,
             modifier = Modifier.fillMaxWidth()
