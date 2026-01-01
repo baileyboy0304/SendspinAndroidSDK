@@ -307,7 +307,7 @@ internal class SendspinPcmClient(
                 val snapshot = jitter.snapshot(clock.estimatedOffsetUs())
                 Log.d(
                     tag,
-                    "stats: offset=${clock.estimatedOffsetUs()}us drift=${String.format("%.3f", clock.estimatedDriftPpm())}ppm " +
+                    "stats: drift=${String.format("%.3f", clock.estimatedDriftPpm())}ppm " +
                             "rtt~=${clock.estimatedRttUs()}us queued=${snapshot.queuedChunks} ahead~=${snapshot.bufferAheadMs}ms " +
                             "codec=$codec playoutOffset=${playoutOffsetUs / 1000}ms"
                 )
